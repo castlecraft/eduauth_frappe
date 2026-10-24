@@ -134,6 +134,104 @@ topaz_registry = {
 
 ---
 
+## 📐 Frappe Modeling Patterns in ReBAC
+
+Frappe applications model many-to-many and hierarchical relationships in several ways. Regardless of which database pattern is used in Frappe, `topaz_frappe` normalizes them into standard ReBAC graph edges `(object#relation@subject)`:
+
+### Pattern 1: Child Table on Object (e.g. `Eduauth Committee` or `Eduauth Role`)
+The document being saved is the **Object**, and each row in its child table references a **Subject** (`user` or `group#member`).
+```python
+"Eduauth Committee": {
+    "object": {"type": "committee", "id_field": "name"},
+    "relations": [
+        # Child table 'members' maps each row's 'user' field to the 'member' relation
+        {"kind": "child", "table": "members", "subject_field": "user", "static_relation": "member"},
+    ],
+}
+```
+*Emits to Topaz:* `committee:Order_Of_The_Phoenix#member@user:minerva.mcgonagall@hogwarts.edu`
+
+### Pattern 2: Child Table on Subject (e.g. `User` has `roles` / `Has Role`)
+The document being saved is the **Subject**, and each row in the child table references an external **Object**.
+```python
+"User": {
+    "object": {"type": "user", "id_field": "name"},
+    "relations": [
+        # Inverts relation: object is the Role named in row.role, subject is the parent User
+        {
+            "kind": "child",
+            "table": "roles",
+            "target_type": "role",
+            "target_field": "role",
+            "static_relation": "assignee",
+        }
+    ],
+}
+```
+*Emits to Topaz:* `role:HOD#assignee@user:minerva.mcgonagall@hogwarts.edu`
+
+### Pattern 3: Dedicated Junction DocType (e.g. `Enrollment` or `Course Instructor`)
+A standalone DocType linking two entities via Link fields (`student` and `course`). The junction doc itself is not an object in Topaz; it bridges them:
+```python
+"Course Enrollment": {
+    "object": {"type": "course", "id_field": "course"},
+    "relations": [
+        {"kind": "link", "relation": "student", "target_type": "user", "field": "student"}
+    ],
+}
+```
+*Emits to Topaz:* `course:CS101#student@user:harry.potter@hogwarts.edu`
+
+### Pattern 4: Dynamic / Computed Relations (e.g. `User Permission`)
+For dynamic records with variable targets or custom business logic, use a Python generator function:
+```python
+"User Permission": {
+    "object": {"type": "user_permission", "id_field": "name"},
+    "relations": [
+        {"kind": "computed", "generator": "my_app.permissions.get_user_permission_relations"}
+    ],
+}
+```
+
+---
+
+## 💡 Type-Safe Configuration with `domain.py` Dataclasses
+
+Instead of raw dictionaries and untyped strings, developers can import typed dataclasses directly from `topaz_frappe.core.domain`. This enables IDE autocompletion, type-checking, and in-editor documentation:
+
+```python
+from topaz_frappe.core.domain import (
+    ChildTableRelation,
+    LinkRelation,
+    TopazObjectSpec,
+)
+
+topaz_registry = {
+    "Eduauth Committee": {
+        "object": TopazObjectSpec(object_type="committee", id_field="name"),
+        "relations": [
+            LinkRelation(relation="chair", target_type="user", field="chair"),
+            ChildTableRelation(
+                table="members",
+                subject_field="user",
+                static_relation="member",
+            ),
+            ChildTableRelation(
+                table="external_experts",
+                subject_field="user",
+                static_relation="external_expert",
+            ),
+        ],
+        "permissions": {
+            "read": ["is_member", "can_access"],
+            "write": "can_sign",
+        },
+    },
+}
+```
+
+---
+
 ## 🛠️ Quickstart with DevContainer
 
 Open this folder in VS Code or any devcontainer-compatible environment (**Reopen in Container**). It spins up Frappe, MariaDB, Redis, and Topaz automatically.
