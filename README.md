@@ -86,6 +86,11 @@ topaz_registry = {
             {"kind": "child", "table": "staff_members", "subject_field": "user", "static_relation": "staff"},
             {"kind": "child", "table": "candidates", "subject_field": "user", "static_relation": "candidate"},
         ],
+        # (Optional) Opt-in Desk permission mappings:
+        "permissions": {
+            "read": "is_member",     # List view & read access if user is member
+            "write": "lead",          # Edit access if user is HOD/acting head
+        },
     },
 
     # 3. Committee with child table membership
@@ -96,6 +101,12 @@ topaz_registry = {
             {"kind": "child", "table": "members", "subject_field": "user", "static_relation": "member"},
             {"kind": "child", "table": "external_experts", "subject_field": "user", "static_relation": "external_expert"},
         ],
+        # (Optional) Opt-in Desk permission mappings:
+        # Maps an array/list of relations: access granted if ANY relation matches (OR logic)
+        "permissions": {
+            "read": ["is_member", "can_access"],
+            "write": "can_sign",
+        },
     },
 
     # 4. Standard User DocType registration
@@ -145,19 +156,54 @@ Probe the Topaz connection:
 bench --site localhost topaz-health
 ```
 
-### 4. Bulk Sync Data to Topaz
-Sync all existing database records to Topaz:
+### 4. Seed Demo Users and Records
+On a fresh site with no users or records, run the demo hydration script:
+```bash
+bench --site localhost execute eduauth_frappe.commands.setup_demo
+```
+This script automatically:
+* Creates demo users: `albus.dumbledore@hogwarts.edu` (`System Manager`), `minerva.mcgonagall@hogwarts.edu` (`Desk User`), and `harry.potter@hogwarts.edu` (`Desk User`).
+* Sets all their passwords to `password123`.
+* Grants `Desk User` role access on the DocTypes so Frappe delegates Desk permission checks to Topaz.
+* Creates `Hogwarts` (Institute), `Gryffindor` (Department), and `Order_Of_The_Phoenix` (Committee).
+
+### 5. Bulk Sync Data to Topaz
+Sync the newly seeded database records into Topaz:
 ```bash
 bench --site localhost topaz-sync
 ```
 
-### 5. Verify Authorization Probe via CLI
+### 6. Enable Topaz Desk Permissions
+Enable Topaz ReBAC enforcement for Frappe Desk views and documents:
+```bash
+bench --site localhost set-config topaz_desk_permissions true
+```
+
+### 7. Test in Browser at `http://localhost:8000`
+Open `http://localhost:8000` in your browser and test with different user logins:
+
+1. **Log in as Minerva** (`minerva.mcgonagall@hogwarts.edu` / `password123`):
+   * Visit `/app/eduauth-department`: Can view and edit `Gryffindor` (she is Department Head and Faculty).
+   * Visit `/app/eduauth-committee`: Can view `Order_Of_The_Phoenix` (she is a Committee Member; evaluated via `["is_member", "can_access"]`).
+   * Attempting to edit or sign the Committee will fail (only `chair` has `can_sign`).
+
+2. **Log in as Harry** (`harry.potter@hogwarts.edu` / `password123`):
+   * Visit `/app/eduauth-department`: Can view `Gryffindor` (he is a Student in the Department).
+   * Attempting to edit `Gryffindor` will fail (he is not Department Head / `lead`).
+   * Visit `/app/eduauth-committee`: List is empty (access denied because Harry is not a member of the Committee).
+
+3. **Log in as Albus** (`albus.dumbledore@hogwarts.edu` / `password123`):
+   * Full access to `Order_Of_The_Phoenix` as Committee Chair (`can_sign`).
+
+---
+
+### 8. Verify Authorization Probe via CLI
 Probe ReBAC permissions directly:
 ```bash
 bench --site localhost topaz-health --object-type institution --object-id Hogwarts --relation director
 ```
 
-### 6. Prune Dangling Objects
+### 9. Prune Dangling Objects
 Reconcile Topaz with the Frappe database and remove orphaned objects:
 ```bash
 # Dry run:

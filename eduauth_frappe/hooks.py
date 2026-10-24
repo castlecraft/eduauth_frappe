@@ -309,6 +309,10 @@ topaz_registry = {
 			{"kind": "child", "table": "staff_members", "subject_field": "user", "static_relation": "staff"},
 			{"kind": "child", "table": "candidates", "subject_field": "user", "static_relation": "candidate"},
 		],
+		"permissions": {
+			"read": "is_member",
+			"write": "lead",
+		},
 	},
 	"Eduauth Committee": {
 		"object": {"type": "committee", "id_field": "name"},
@@ -322,6 +326,11 @@ topaz_registry = {
 				"static_relation": "external_expert",
 			},
 		],
+		"permissions": {
+			# Array/list of Topaz relations: user with either relation gets read access
+			"read": ["is_member", "can_access"],
+			"write": "can_sign",
+		},
 	},
 	"Eduauth Project": {
 		"object": {"type": "project", "id_field": "name"},
