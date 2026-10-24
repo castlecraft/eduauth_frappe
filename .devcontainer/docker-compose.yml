@@ -65,6 +65,7 @@ services:
       - TOPAZ_NO_TELEMETRY=true
       - TOPAZ_DB_DIR=/app/data
     volumes:
+      - ./config/topaz:/config:ro
       - topaz_data:/app/data
     ports:
       - "8484:8484" # Topaz Console Web UI

@@ -1,0 +1,95 @@
+# yaml-language-server: $schema=https://topaz.sh/schema/config.json
+---
+version: 2
+
+logging:
+  prod: false
+  log_level: info
+
+directory:
+  db_path: ${TOPAZ_DB_DIR}/topaz.db
+  request_timeout: 5s
+  seed_metadata: false
+
+remote_directory:
+  address: "0.0.0.0:8282"
+  insecure: true
+
+jwt:
+  acceptable_time_skew_seconds: 5
+
+auth:
+  options:
+    default:
+      enable_api_key: false
+      enable_anonymous: true
+
+api:
+  health:
+    listen_address: "0.0.0.0:9494"
+  metrics:
+    listen_address: "0.0.0.0:9696"
+  services:
+    console:
+      gateway:
+        listen_address: "0.0.0.0:8484"
+        allowed_origins:
+          - "*"
+    authorizer:
+      needs:
+        - reader
+      grpc:
+        listen_address: "0.0.0.0:8282"
+        connection_timeout_seconds: 2
+      gateway:
+        listen_address: "0.0.0.0:8383"
+        allowed_origins:
+          - "*"
+    model:
+      grpc:
+        listen_address: "0.0.0.0:8282"
+      gateway:
+        listen_address: "0.0.0.0:8383"
+        allowed_origins:
+          - "*"
+    reader:
+      needs:
+        - model
+      grpc:
+        listen_address: "0.0.0.0:8282"
+      gateway:
+        listen_address: "0.0.0.0:8383"
+        allowed_origins:
+          - "*"
+    writer:
+      needs:
+        - model
+      grpc:
+        listen_address: "0.0.0.0:8282"
+      gateway:
+        listen_address: "0.0.0.0:8383"
+        allowed_origins:
+          - "*"
+    importer:
+      needs:
+        - model
+      grpc:
+        listen_address: "0.0.0.0:8282"
+      gateway:
+        listen_address: "0.0.0.0:8383"
+        allowed_origins:
+          - "*"
+    exporter:
+      needs:
+        - model
+      grpc:
+        listen_address: "0.0.0.0:8282"
+      gateway:
+        listen_address: "0.0.0.0:8383"
+        allowed_origins:
+          - "*"
+
+opa:
+  instance_id: "-"
+  graceful_shutdown_period_seconds: 2
+  max_plugin_wait_time_seconds: 30
