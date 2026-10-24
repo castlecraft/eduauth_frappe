@@ -197,14 +197,46 @@ For dynamic records with variable targets or custom business logic, use a Python
 
 ## 💡 Type-Safe Configuration with `domain.py` Dataclasses
 
-Instead of raw dictionaries and untyped strings, developers can import typed dataclasses directly from `topaz_frappe.core.domain`. This enables IDE autocompletion, type-checking, and in-editor documentation:
+Instead of raw dictionaries and untyped strings, developers can import typed dataclasses directly from `topaz_frappe.core.domain`. This enables IDE autocompletion, type-checking, and in-editor documentation.
+
+For `ComputedRelation`, the callable can return a simple `list[TopazRelation]`, or stream relations lazily via `yield`:
 
 ```python
 from topaz_frappe.core.domain import (
     ChildTableRelation,
+    ComputedRelation,
     LinkRelation,
     TopazObjectSpec,
+    TopazRelation,
 )
+
+# Option A: Standard function returning a list of relations
+def get_committee_leadership(doc) -> list[TopazRelation]:
+    relations = []
+    if getattr(doc, "co_chair", None):
+        relations.append(
+            TopazRelation(
+                object_type="committee",
+                object_id=doc.name,
+                relation="co_chair",
+                subject_type="user",
+                subject_id=doc.co_chair,
+            )
+        )
+    return relations
+
+# Option B: Generator yielding relations (useful for traversing complex trees or multiple lists)
+def stream_project_reviewers(doc):
+    for table_name in ("primary_reviewers", "external_reviewers"):
+        for row in doc.get(table_name, []):
+            if row.get("user") and row.get("is_active"):
+                yield TopazRelation(
+                    object_type="committee",
+                    object_id=doc.name,
+                    relation="reviewer",
+                    subject_type="user",
+                    subject_id=row.user,
+                )
 
 topaz_registry = {
     "Eduauth Committee": {
@@ -216,11 +248,10 @@ topaz_registry = {
                 subject_field="user",
                 static_relation="member",
             ),
-            ChildTableRelation(
-                table="external_experts",
-                subject_field="user",
-                static_relation="external_expert",
-            ),
+            # Computed relation using a standard list-returning function:
+            ComputedRelation(generator=get_committee_leadership),
+            # Or using a generator function:
+            # ComputedRelation(generator=stream_project_reviewers),
         ],
         "permissions": {
             "read": ["is_member", "can_access"],
