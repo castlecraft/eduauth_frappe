@@ -18,7 +18,18 @@ def cprint(*args, level: int = 1):
 		print(CYLW, message, reset)
 
 
+def ensure_my_cnf():
+	"""Ensure ~/.my.cnf disables SSL by default to prevent TLS 2026 errors on non-SSL local MariaDB."""
+	my_cnf_path = os.path.expanduser("~/.my.cnf")
+	if not os.path.exists(my_cnf_path):
+		cprint(f"Creating {my_cnf_path} with ssl=0...", level=2)
+		with open(my_cnf_path, "w") as f:
+			f.write("[client]\nssl=0\n\n[mysql]\nssl=0\n\n[mariadb]\nssl=0\n")
+		os.chmod(my_cnf_path, 0o600)
+
+
 def main():
+	ensure_my_cnf()
 	parser = get_args_parser()
 	args = parser.parse_args()
 	init_bench_if_not_exist(args)
@@ -101,7 +112,7 @@ def init_bench_if_not_exist(args):
 		args.frappe_branch,
 	]
 	if os.path.exists(args.apps_json):
-		bench_init_cmd.extend(["--apps-path", args.apps_json])
+		bench_init_cmd.extend(["--apps_path", args.apps_json])
 
 	bench_init_cmd.append(args.bench_name)
 	subprocess.run(bench_init_cmd, check=True)
