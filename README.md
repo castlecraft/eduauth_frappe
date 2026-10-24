@@ -1,33 +1,189 @@
-### Eduauth Frappe
+# Eduauth Frappe
 
-Topaz Frappe used for Education Institute
+`eduauth_frappe` demonstrates how an education ERP / institute management application uses **`topaz_frappe`** to turn Frappe into the authoring and governance control plane for a **[Topaz](https://www.topaz.sh)** (AuthZen / Zanzibar ReBAC) directory.
 
-### Installation
+---
 
-You can install this app using the [bench](https://github.com/frappe/bench) CLI:
+## 🏛️ Architecture & Mental Model
 
-```bash
-cd $PATH_TO_YOUR_BENCH
-bench get-app $URL_OF_THIS_REPO --branch version-16
-bench install-app eduauth_frappe
+```
+       ┌────────────────────────────────────────────────────────┐
+       │                   Frappe Desk / API                    │
+       │  Authoring UI for Institutes, Departments, Committees, │
+       │         Projects, Roles, Groups, and Users             │
+       └───────────────────────────┬────────────────────────────┘
+                                   │ Document Events (after_commit)
+                                   ▼
+       ┌────────────────────────────────────────────────────────┐
+       │                      topaz_frappe                      │
+       │    Reads topaz_registry in hooks.py, computes diffs,   │
+       │    and syncs object & relationship tuples via REST v3  │
+       └───────────────────────────┬────────────────────────────┘
+                                   │ HTTP (POST /object, POST /relation)
+                                   ▼
+       ┌────────────────────────────────────────────────────────┐
+       │                  Topaz Directory Engine                │
+       │           Evaluates Zanzibar ReBAC graph &             │
+       │          serves AuthZen authorization checks           │
+       └───────────────────────────▲────────────────────────────┘
+                                   │
+              Downstream Microservices (FastAPI, Java, Go)
+              Query Topaz directly: POST /api/v3/directory/check
 ```
 
-### Contributing
+* **Frappe is the Authoring Surface**: Frappe users edit standard documents (Institutes, Departments, Committees).
+* **Topaz is the Source of Truth for Authorization**: Downstream services query Topaz (not Frappe) to answer authorization decisions in sub-milliseconds.
+* **No Domain Controller Boilerplate**: Consuming apps do **not** modify DocType Python controllers or JavaScript views. Everything is declared in `hooks.py`.
 
-This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
+---
 
-```bash
-cd apps/eduauth_frappe
-pre-commit install
+## 🛠️ What Does an App Need to Add to Use `topaz_frappe`?
+
+To integrate any Frappe app with Topaz, you only need **two things**:
+
+### 1. A Topaz Schema (`manifest.yaml`)
+Place your authorization model schema in your app at:
+`eduauth_frappe/topaz/manifest.yaml`
+
+This defines your object types, base relations, and computed permissions (such as `lead = head | acting_head` or `can_review = is_member`).
+
+### 2. The `topaz_registry` Hook in `hooks.py`
+In your app's `hooks.py`, declare the `topaz_registry` dictionary. Frappe merges this hook across installed apps.
+
+**No changes to DocType Python classes (`.py`), client scripts (`.js`), or custom controllers are needed.**
+
+Example from [`eduauth_frappe/hooks.py`](./eduauth_frappe/hooks.py):
+
+```python
+topaz_registry = {
+    # 1. Root / Independent entity
+    "Eduauth Institute": {
+        "object": {"type": "institution", "id_field": "name"},
+        "relations": [
+            {"kind": "link", "relation": "director", "target_type": "user", "field": "director"},
+            {"kind": "link", "relation": "deputy_director", "target_type": "user", "field": "deputy_director"},
+            {"kind": "link", "relation": "dean_rnd", "target_type": "user", "field": "dean_rnd"},
+            {"kind": "link", "relation": "dean_ap", "target_type": "user", "field": "dean_ap"},
+            {"kind": "link", "relation": "dean_admin", "target_type": "user", "field": "dean_admin"},
+            {"kind": "link", "relation": "registrar", "target_type": "user", "field": "registrar"},
+        ],
+    },
+
+    # 2. Hierarchical entity with foreign link and child tables
+    "Eduauth Department": {
+        "object": {"type": "department", "id_field": "name"},
+        "relations": [
+            # Edge to parent institution (object -> object)
+            {"kind": "link", "relation": "parent_institute", "target_type": "institution", "field": "parent_institute"},
+            # Link to User
+            {"kind": "link", "relation": "head", "target_type": "user", "field": "head"},
+            {"kind": "link", "relation": "acting_head", "target_type": "user", "field": "acting_head"},
+            # Link to a Role with subject-set (store_keeper -> role:X#assignee)
+            {"kind": "link", "relation": "store_keeper", "target_type": "role", "field": "store_keeper_role", "subject_relation": "assignee"},
+            # Child table sets -> subject relations
+            {"kind": "child", "table": "faculty_members", "subject_field": "user", "static_relation": "faculty"},
+            {"kind": "child", "table": "students", "subject_field": "user", "static_relation": "student"},
+            {"kind": "child", "table": "staff_members", "subject_field": "user", "static_relation": "staff"},
+            {"kind": "child", "table": "candidates", "subject_field": "user", "static_relation": "candidate"},
+        ],
+    },
+
+    # 3. Committee with child table membership
+    "Eduauth Committee": {
+        "object": {"type": "committee", "id_field": "name"},
+        "relations": [
+            {"kind": "link", "relation": "chair", "target_type": "user", "field": "chair"},
+            {"kind": "child", "table": "members", "subject_field": "user", "static_relation": "member"},
+            {"kind": "child", "table": "external_experts", "subject_field": "user", "static_relation": "external_expert"},
+        ],
+    },
+
+    # 4. Standard User DocType registration
+    "User": {
+        "object": {"type": "user", "id_field": "name"},
+        "relations": [],
+    },
+}
 ```
 
-Pre-commit is configured to use the following tools for checking and formatting your code:
+---
 
-- ruff
-- eslint
-- prettier
-- pyupgrade
+## 📋 Mapped DocTypes & Schema in `eduauth_frappe`
 
-### License
+| DocType | Topaz Object Type | Emitted Base Relations | Computed Permissions in Topaz |
+|---|---|---|---|
+| **Eduauth Institute** | `institution` | `director`, `deputy_director`, `dean_rnd`, `dean_ap`, `dean_admin`, `registrar` | `is_executive`, `is_central_admin`, `can_escalate_rnd` |
+| **Eduauth Department** | `department` | `parent_institute`, `head`, `acting_head`, `faculty`, `student`, `staff`, `candidate`, `store_keeper` | `lead` (`head \| acting_head`), `is_academic`, `is_member`, `can_escalate_rnd` |
+| **Eduauth Committee** | `committee` | `chair`, `member`, `external_expert` | `is_member`, `can_review`, `can_sign` |
+| **Eduauth Project** | `project` | `host_department`, `lead_investigator`, `co_investigator`, `research_fellow`, `delegate_signatory` | `investigator`, `lead`, `member`, `department_lead`, `can_view` |
+| **Eduauth Group** | `group` | `member` (`user \| group#member`) | – |
+| **Eduauth Role** | `role` | `assignee` (`user \| group#member`) | `is_assigned` |
+| **Eduauth Identity**| `identity` | `identifier` (`user`) | – |
+| **User** | `user` | – | – |
 
-apache-2.0
+---
+
+## 🚀 Quickstart & Showcase Commands
+
+### 1. Site Configuration
+Enable Topaz on your site and set the directory host:
+```bash
+bench --site localhost set-config topaz_enabled true
+bench --site localhost set-config topaz_host http://frappe_topaz:8383
+bench --site localhost set-config topaz_subject_type user
+```
+
+### 2. Load the App Manifest into Topaz
+Upload `eduauth_frappe`'s schema manifest into Topaz:
+```bash
+bench --site localhost topaz-load-manifest
+```
+
+### 3. Check Connectivity & Health
+Probe the Topaz connection:
+```bash
+bench --site localhost topaz-health
+```
+
+### 4. Bulk Sync Data to Topaz
+Sync all existing database records to Topaz:
+```bash
+bench --site localhost topaz-sync
+```
+
+### 5. Verify Authorization Probe via CLI
+Probe ReBAC permissions directly:
+```bash
+bench --site localhost topaz-health --object-type institution --object-id Hogwarts --relation director
+```
+
+### 6. Prune Dangling Objects
+Reconcile Topaz with the Frappe database and remove orphaned objects:
+```bash
+# Dry run:
+bench --site localhost topaz-prune --dry-run
+
+# Execute prune:
+bench --site localhost topaz-prune
+```
+
+---
+
+## 🔍 Querying Topaz from Downstream Microservices
+
+External applications query Topaz REST API directly without hitting Frappe:
+
+```python
+import requests
+
+response = requests.post("http://frappe_topaz:8383/api/v3/directory/check", json={
+    "object_type": "department",
+    "object_id": "Gryffindor",
+    "relation": "lead",
+    "subject_type": "user",
+    "subject_id": "prof.mcgonagall@hogwarts.edu"
+})
+
+print(response.json())
+# Output: {'check': True, 'trace': [], 'context': {}}
+```

@@ -262,3 +262,122 @@ app_license = "apache-2.0"
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+# Topaz Registry Mapping
+# ----------------------
+topaz_registry = {
+	"Eduauth Institute": {
+		"object": {"type": "institution", "id_field": "name"},
+		"relations": [
+			{"kind": "link", "relation": "director", "target_type": "user", "field": "director"},
+			{
+				"kind": "link",
+				"relation": "deputy_director",
+				"target_type": "user",
+				"field": "deputy_director",
+			},
+			{"kind": "link", "relation": "dean_rnd", "target_type": "user", "field": "dean_rnd"},
+			{"kind": "link", "relation": "dean_ap", "target_type": "user", "field": "dean_ap"},
+			{"kind": "link", "relation": "dean_admin", "target_type": "user", "field": "dean_admin"},
+			{"kind": "link", "relation": "registrar", "target_type": "user", "field": "registrar"},
+		],
+	},
+	"Eduauth Department": {
+		"object": {"type": "department", "id_field": "name"},
+		"relations": [
+			{
+				"kind": "link",
+				"relation": "parent_institute",
+				"target_type": "institution",
+				"field": "parent_institute",
+			},
+			{"kind": "link", "relation": "head", "target_type": "user", "field": "head"},
+			{"kind": "link", "relation": "acting_head", "target_type": "user", "field": "acting_head"},
+			{
+				"kind": "link",
+				"relation": "store_keeper",
+				"target_type": "role",
+				"field": "store_keeper_role",
+				"subject_relation": "assignee",
+			},
+			{
+				"kind": "child",
+				"table": "faculty_members",
+				"subject_field": "user",
+				"static_relation": "faculty",
+			},
+			{"kind": "child", "table": "students", "subject_field": "user", "static_relation": "student"},
+			{"kind": "child", "table": "staff_members", "subject_field": "user", "static_relation": "staff"},
+			{"kind": "child", "table": "candidates", "subject_field": "user", "static_relation": "candidate"},
+		],
+	},
+	"Eduauth Committee": {
+		"object": {"type": "committee", "id_field": "name"},
+		"relations": [
+			{"kind": "link", "relation": "chair", "target_type": "user", "field": "chair"},
+			{"kind": "child", "table": "members", "subject_field": "user", "static_relation": "member"},
+			{
+				"kind": "child",
+				"table": "external_experts",
+				"subject_field": "user",
+				"static_relation": "external_expert",
+			},
+		],
+	},
+	"Eduauth Project": {
+		"object": {"type": "project", "id_field": "name"},
+		"relations": [
+			{
+				"kind": "link",
+				"relation": "host_department",
+				"target_type": "department",
+				"field": "host_department",
+			},
+			{
+				"kind": "link",
+				"relation": "lead_investigator",
+				"target_type": "user",
+				"field": "lead_investigator",
+			},
+			{
+				"kind": "link",
+				"relation": "co_investigator",
+				"target_type": "user",
+				"field": "co_investigator",
+			},
+			{
+				"kind": "link",
+				"relation": "research_fellow",
+				"target_type": "user",
+				"field": "research_fellow",
+			},
+			{
+				"kind": "link",
+				"relation": "delegate_signatory",
+				"target_type": "user",
+				"field": "delegate_signatory",
+			},
+		],
+	},
+	"Eduauth Group": {
+		"object": {"type": "group", "id_field": "name"},
+		"relations": [
+			{"kind": "child", "table": "members", "subject_field": "user", "static_relation": "member"},
+		],
+	},
+	"Eduauth Role": {
+		"object": {"type": "role", "id_field": "name"},
+		"relations": [
+			{"kind": "child", "table": "assignees", "subject_field": "user", "static_relation": "assignee"},
+		],
+	},
+	"Eduauth Identity": {
+		"object": {"type": "identity", "id_field": "name"},
+		"relations": [
+			{"kind": "link", "relation": "identifier", "target_type": "user", "field": "user"},
+		],
+	},
+	"User": {
+		"object": {"type": "user", "id_field": "name"},
+		"relations": [],
+	},
+}

@@ -1,0 +1,91 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_rename": 1,
+ "autoname": "prompt",
+ "creation": "2026-10-24 09:22:59.672876",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "institute_name",
+  "director",
+  "deputy_director",
+  "dean_rnd",
+  "dean_ap",
+  "dean_admin",
+  "registrar"
+ ],
+ "fields": [
+  {
+   "fieldname": "institute_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Institute Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "director",
+   "fieldtype": "Link",
+   "label": "Director",
+   "options": "User"
+  },
+  {
+   "fieldname": "deputy_director",
+   "fieldtype": "Link",
+   "label": "Deputy Director",
+   "options": "User"
+  },
+  {
+   "fieldname": "dean_rnd",
+   "fieldtype": "Link",
+   "label": "Dean R&D",
+   "options": "User"
+  },
+  {
+   "fieldname": "dean_ap",
+   "fieldtype": "Link",
+   "label": "Dean Academic Programmes",
+   "options": "User"
+  },
+  {
+   "fieldname": "dean_admin",
+   "fieldtype": "Link",
+   "label": "Dean Admin",
+   "options": "User"
+  },
+  {
+   "fieldname": "registrar",
+   "fieldtype": "Link",
+   "label": "Registrar",
+   "options": "User"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-24 09:22:59.672876",
+ "modified_by": "Administrator",
+ "module": "Eduauth Frappe",
+ "name": "Eduauth Institute",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

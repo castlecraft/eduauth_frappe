@@ -1,0 +1,80 @@
+# yaml-language-server: $schema=https://www.topaz.sh/schema/manifest.json
+---
+model:
+  version: 3
+
+types:
+  user: {}
+
+  identity:
+    relations:
+      identifier: user
+
+  group:
+    relations:
+      member: user | group#member
+
+  role:
+    relations:
+      assignee: user | group#member
+    permissions:
+      is_assigned: assignee
+
+  institution:
+    relations:
+      director: user
+      deputy_director: user
+      dean_rnd: user
+      dean_ap: user
+      dean_admin: user
+      registrar: user
+      central_audit: user | role#assignee
+      alumni: user
+    permissions:
+      is_executive: director | deputy_director
+      is_central_admin: registrar | central_audit
+      can_escalate_rnd: dean_rnd | director
+
+  department:
+    relations:
+      parent_institute: institution
+      head: user
+      acting_head: user
+      faculty: user | group#member
+      adjunct_faculty: user
+      postdoc: user
+      student: user | group#member
+      store_keeper: user | role#assignee
+      staff: user | group#member
+      candidate: user | group#member
+    permissions:
+      lead: head | acting_head
+      is_academic: faculty | adjunct_faculty | postdoc | student
+      is_member: is_academic | store_keeper | staff
+      is_applicant: candidate
+      can_escalate_rnd: parent_institute->can_escalate_rnd
+      can_audit: parent_institute->is_central_admin
+
+  committee:
+    relations:
+      chair: user
+      member: user | group#member
+      external_expert: user
+    permissions:
+      is_member: chair | member | external_expert
+      can_review: is_member
+      can_sign: chair
+
+  project:
+    relations:
+      host_department: department
+      lead_investigator: user
+      co_investigator: user
+      research_fellow: user
+      delegate_signatory: user
+    permissions:
+      investigator: lead_investigator | co_investigator
+      lead: investigator | delegate_signatory
+      member: investigator | research_fellow
+      department_lead: host_department->lead
+      can_view: member | host_department->is_member
