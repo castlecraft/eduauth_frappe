@@ -134,13 +134,30 @@ topaz_registry = {
 
 ---
 
-## 🚀 Quickstart & Showcase Commands
+## 🛠️ Quickstart with DevContainer
+
+Open this folder in VS Code or any devcontainer-compatible environment (**Reopen in Container**). It spins up Frappe, MariaDB, Redis, and Topaz automatically.
+
+Inside the container terminal, run:
+
+```bash
+# 1. Quickstart bench and install topaz_frappe + eduauth_frappe using installer.py
+./installer.py -j apps.json
+
+# 2. Start the bench server
+cd frappe-bench
+bench start
+```
+
+---
+
+## 🚀 Step-by-Step Topaz & Permissions Setup
 
 ### 1. Site Configuration
 Enable Topaz on your site and set the directory host:
 ```bash
 bench --site localhost set-config topaz_enabled true
-bench --site localhost set-config topaz_host http://frappe_topaz:8383
+bench --site localhost set-config topaz_host http://topaz:8383
 bench --site localhost set-config topaz_subject_type user
 ```
 
@@ -222,12 +239,12 @@ External applications query Topaz REST API directly without hitting Frappe:
 ```python
 import requests
 
-response = requests.post("http://frappe_topaz:8383/api/v3/directory/check", json={
+response = requests.post("http://topaz:8383/api/v3/directory/check", json={
     "object_type": "department",
     "object_id": "Gryffindor",
     "relation": "lead",
     "subject_type": "user",
-    "subject_id": "prof.mcgonagall@hogwarts.edu"
+    "subject_id": "minerva.mcgonagall@hogwarts.edu"
 })
 
 print(response.json())

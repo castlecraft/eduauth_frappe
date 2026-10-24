@@ -1,0 +1,84 @@
+version: "3.8"
+
+services:
+  devcontainer:
+    image: frappe/bench:latest
+    user: "1000:1000"
+    working_dir: /workspace
+    volumes:
+      - ..:/workspace:cached
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    environment:
+      - SHELL=/bin/bash
+      - MARIADB_HOST=mariadb
+      - REDIS_CACHE=redis://redis-cache:6379
+      - REDIS_QUEUE=redis://redis-queue:6379
+      - TOPAZ_AUTHORIZER_URL=topaz:8282
+      - TOPAZ_DIRECTORY_URL=topaz:8282
+      - TOPAZ_INSECURE=true
+    depends_on:
+      - mariadb
+      - redis-cache
+      - redis-queue
+      - topaz
+    command: sleep infinity
+    networks:
+      - frappe-dev-net
+
+  mariadb:
+    image: mariadb:10.6
+    environment:
+      - MYSQL_ROOT_PASSWORD=123
+      - MARIADB_CHARACTER_SET_SERVER=utf8mb4
+      - MARIADB_COLLATION_SERVER=utf8mb4_unicode_ci
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+      - --skip-innodb-read-only-compressed
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - frappe-dev-net
+
+  redis-cache:
+    image: redis:alpine
+    volumes:
+      - redis_cache_data:/data
+    networks:
+      - frappe-dev-net
+
+  redis-queue:
+    image: redis:alpine
+    volumes:
+      - redis_queue_data:/data
+    networks:
+      - frappe-dev-net
+
+  topaz:
+    image: ghcr.io/aserto-dev/topaz:latest
+    environment:
+      - TOPAZ_NO_TELEMETRY=true
+      - TOPAZ_DB_DIR=/app/data
+    volumes:
+      - topaz_data:/app/data
+    ports:
+      - "8484:8484" # Topaz Console Web UI
+      - "8383:8383" # Topaz REST Gateway
+      - "8282:8282" # Topaz gRPC Gateway
+    networks:
+      - frappe-dev-net
+
+volumes:
+  mariadb_data:
+  redis_cache_data:
+  redis_queue_data:
+  topaz_data:
+
+networks:
+  frappe-dev-net:
+    driver: bridge

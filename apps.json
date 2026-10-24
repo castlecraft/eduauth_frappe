@@ -1,0 +1,10 @@
+[
+  {
+    "url": "https://github.com/castlecraft/topaz_frappe.git",
+    "branch": "version-16"
+  },
+  {
+    "url": "https://github.com/castlecraft/eduauth_frappe.git",
+    "branch": "version-16"
+  }
+]

@@ -1,0 +1,44 @@
+{
+  "name": "Eduauth Frappe + Topaz DevContainer",
+  "dockerComposeFile": [
+    "docker-compose.yml"
+  ],
+  "service": "devcontainer",
+  "workspaceFolder": "/workspace",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "frappe",
+      "installZsh": "true",
+      "configureZshAsDefaultShell": "true"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "redhat.vscode-yaml"
+      ]
+    }
+  },
+  "forwardPorts": [
+    8000,
+    8383,
+    8484
+  ],
+  "portsAttributes": {
+    "8000": {
+      "label": "Frappe Web Desk",
+      "onAutoForward": "notify"
+    },
+    "8383": {
+      "label": "Topaz REST Gateway",
+      "onAutoForward": "silent"
+    },
+    "8484": {
+      "label": "Topaz Console Web UI",
+      "onAutoForward": "notify"
+    }
+  },
+  "remoteUser": "frappe"
+}
